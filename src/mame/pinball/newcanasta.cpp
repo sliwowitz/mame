@@ -27,7 +27,7 @@ public:
 private:
 	required_device<cpu_device> m_maincpu;
 
-	void newcanasta_map(address_map &map);
+	void newcanasta_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -74,11 +74,11 @@ ROM_START(newcanasta)
 	ROM_REGION(0x2000, "usbio", 0)
 	ROM_LOAD("24lc64.u4", 0x0000, 0x2000, NO_DUMP)
 
-	DISK_REGION("ide:0:hdd:image") // Seagate ST320410A
+	DISK_REGION("ide:0:hdd") // Seagate ST320410A
 	DISK_IMAGE("newcanasta", 0, BAD_DUMP SHA1(7b18a07925cf62d0fcf25fab6e65897eddc45e4e)) // Contains players and operator data
 ROM_END
 
 } // Anonymous namespace
 
 
-GAME(2010, newcanasta, 0, newcanasta, newcanasta, newcanasta_state, empty_init, ROT0, "Marsaplay", "New Canasta", MACHINE_IS_SKELETON_MECHANICAL)
+GAME(2010, newcanasta, 0, newcanasta, newcanasta, newcanasta_state, empty_init, ROT0, "Marsaplay", "New Canasta", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK)

@@ -13,24 +13,24 @@
 ***************************************************************************/
 
 #include "emu.h"
+
 #include "amiga.h"
+#include "gayle.h"
 
 #include "bus/amiga/keyboard/keyboard.h"
 #include "bus/amiga/zorro/zorro.h"
 #include "bus/ata/ataintf.h"
+#include "bus/pccard/sram.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6525tpi.h"
 #include "machine/mos6526.h"
-#include "machine/gayle.h"
 #include "machine/dmac.h"
-#include "machine/pccard.h"
-#include "machine/pccard_sram.h"
 #include "machine/nvram.h"
 #include "machine/i2cmem.h"
-#include "machine/amigafdc.h"
 #include "machine/cr511b.h"
 #include "machine/rp5c01.h"
+
 #include "softlist.h"
 #include "speaker.h"
 
@@ -115,7 +115,7 @@ public:
 		return *this;
 	}
 
-	DECLARE_WRITE_LINE_MEMBER(kbclk_w)
+	void kbclk_w(int state)
 	{
 		if (bool(state) != bool(m_kbclk))
 		{
@@ -143,11 +143,6 @@ public:
 	}
 
 protected:
-	virtual void device_resolve_objects() override
-	{
-		m_kbrst_cb.resolve_safe();
-	}
-
 	virtual void device_start() override
 	{
 		// allocate resources
@@ -247,13 +242,13 @@ public:
 
 	void a1000(machine_config &config);
 	void a1000n(machine_config &config);
-	void a1000_bootrom_map(address_map &map);
-	void a1000_mem(address_map &map);
-	void a1000_overlay_map(address_map &map);
+	void a1000_bootrom_map(address_map &map) ATTR_COLD;
+	void a1000_mem(address_map &map) ATTR_COLD;
+	void a1000_overlay_map(address_map &map) ATTR_COLD;
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	required_device<address_map_bank_device> m_bootrom;
@@ -275,18 +270,18 @@ public:
 	void init_pal();
 	void init_ntsc();
 
-	DECLARE_WRITE_LINE_MEMBER( zorro2_int2_w );
-	DECLARE_WRITE_LINE_MEMBER( zorro2_int6_w );
+	void zorro2_int2_w(int state);
+	void zorro2_int6_w(int state);
 
 	u16 clock_r(offs_t offset);
 	void clock_w(offs_t offset, u16 data);
 
 	void a2000(machine_config &config);
 	void a2000n(machine_config &config);
-	void a2000_mem(address_map &map);
+	void a2000_mem(address_map &map) ATTR_COLD;
 
 protected:
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 	// amiga_state overrides
 	virtual bool int2_pending() override;
@@ -315,15 +310,15 @@ public:
 	void init_pal();
 	void init_ntsc();
 
-	DECLARE_WRITE_LINE_MEMBER( side_int2_w );
-	DECLARE_WRITE_LINE_MEMBER( side_int6_w );
+	void side_int2_w(int state);
+	void side_int6_w(int state);
 
 	void a500n(machine_config &config);
 	void a500(machine_config &config);
-	void a500_mem(address_map &map);
+	void a500_mem(address_map &map) ATTR_COLD;
 
 protected:
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 	// amiga_state overrides
 	virtual bool int2_pending() override;
@@ -359,19 +354,19 @@ public:
 
 	uint8_t dmac_scsi_data_read(offs_t offset);
 	void dmac_scsi_data_write(offs_t offset, uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER( dmac_int_w );
+	void dmac_int_w(int state);
 
 	void tpi_port_b_write(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER( tpi_int_w );
+	void tpi_int_w(int state);
 
 	void cdtv(machine_config &config);
 	void cdtvn(machine_config &config);
-	void cdtv_mem(address_map &map);
-	void cdtv_rc_mem(address_map &map);
+	void cdtv_mem(address_map &map) ATTR_COLD;
+	void cdtv_rc_mem(address_map &map) ATTR_COLD;
 
 protected:
 	// driver_device overrides
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 	// amiga_state overrides
 	virtual bool int2_pending() override;
@@ -406,7 +401,7 @@ public:
 
 	void a3000(machine_config &config);
 	void a3000n(machine_config &config);
-	void a3000_mem(address_map &map);
+	void a3000_mem(address_map &map) ATTR_COLD;
 
 protected:
 
@@ -432,10 +427,10 @@ public:
 
 	void a500pn(machine_config &config);
 	void a500p(machine_config &config);
-	void a500p_mem(address_map &map);
+	void a500p_mem(address_map &map) ATTR_COLD;
 
 protected:
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 	// amiga_state overrides
 	virtual bool int2_pending() override;
@@ -461,8 +456,8 @@ public:
 		, m_gayle_int2(0)
 	{ }
 
-	DECLARE_WRITE_LINE_MEMBER( gayle_int2_w );
-	DECLARE_WRITE_LINE_MEMBER( gayle_int6_w );
+	void gayle_int2_w(int state);
+	void gayle_int6_w(int state);
 
 	void init_pal();
 	void init_ntsc();
@@ -471,7 +466,7 @@ public:
 
 	void a600n(machine_config &config);
 	void a600(machine_config &config);
-	void a600_mem(address_map &map);
+	void a600_mem(address_map &map) ATTR_COLD;
 
 protected:
 	// amiga_state overrides
@@ -496,8 +491,8 @@ public:
 		, m_gayle_int2(0)
 	{ }
 
-	DECLARE_WRITE_LINE_MEMBER( gayle_int2_w );
-	DECLARE_WRITE_LINE_MEMBER( gayle_int6_w );
+	void gayle_int2_w(int state);
+	void gayle_int6_w(int state);
 
 	void init_pal();
 	void init_ntsc();
@@ -506,7 +501,7 @@ public:
 
 	void a1200(machine_config &config);
 	void a1200n(machine_config &config);
-	void a1200_mem(address_map &map);
+	void a1200_mem(address_map &map) ATTR_COLD;
 
 protected:
 	// amiga_state overrides
@@ -538,7 +533,7 @@ public:
 	void scsi_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 	u16 ide_r(offs_t offset, u16 mem_mask = ~0);
 	void ide_w(offs_t offset, u16 data, u16 mem_mask);
-	DECLARE_WRITE_LINE_MEMBER( ide_interrupt_w );
+	void ide_interrupt_w(int state);
 	u32 motherboard_r(offs_t offset, u32 mem_mask = ~0);
 	void motherboard_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 
@@ -551,9 +546,9 @@ public:
 	void a4000n(machine_config &config);
 	void a4000(machine_config &config);
 	void a400030(machine_config &config);
-	void a400030_mem(address_map &map);
-	void a4000_mem(address_map &map);
-	void a4000t_mem(address_map &map);
+	void a400030_mem(address_map &map) ATTR_COLD;
+	void a4000_mem(address_map &map) ATTR_COLD;
+	void a4000t_mem(address_map &map) ATTR_COLD;
 
 protected:
 
@@ -573,17 +568,17 @@ public:
 	cd32_state(const machine_config &mconfig, device_type type, const char *tag)
 		: amiga_state(mconfig, type, tag)
 		, m_player_ports(*this, {"p1_cd32_buttons", "p2_cd32_buttons"})
-		, m_cdda(*this, "cdda")
+		, m_cdda(*this, "akiko:cdda")
 	{ }
 
-	DECLARE_WRITE_LINE_MEMBER( akiko_int_w );
+	void akiko_int_w(int state);
 	void akiko_cia_0_port_a_write(uint8_t data);
 
 	void handle_joystick_cia(u8 pra, u8 dra);
 	u16 handle_joystick_potgor(u16 potgor);
 
-	DECLARE_CUSTOM_INPUT_MEMBER( cd32_input );
-	template <int P> DECLARE_READ_LINE_MEMBER( cd32_sel_mirror_input );
+	ioport_value cd32_input();
+	template <int P> int cd32_sel_mirror_input();
 
 	void init_pal();
 	void init_ntsc();
@@ -596,7 +591,7 @@ public:
 
 	void cd32n(machine_config &config);
 	void cd32(machine_config &config);
-	void cd32_mem(address_map &map);
+	void cd32_mem(address_map &map) ATTR_COLD;
 
 protected:
 	// amiga_state overrides
@@ -660,7 +655,7 @@ void cdtv_state::dmac_scsi_data_write(offs_t offset, uint8_t data)
 		m_tpi->write(offset, data);
 }
 
-WRITE_LINE_MEMBER( cdtv_state::dmac_int_w )
+void cdtv_state::dmac_int_w(int state)
 {
 	m_dmac_irq = state;
 	update_int2();
@@ -672,7 +667,7 @@ void cdtv_state::tpi_port_b_write(uint8_t data)
 	m_cdrom->enable_w(BIT(data, 1));
 }
 
-WRITE_LINE_MEMBER( cdtv_state::tpi_int_w )
+void cdtv_state::tpi_int_w(int state)
 {
 	m_tpi_irq = state;
 	update_int2();
@@ -844,16 +839,17 @@ void a2000_state::machine_reset()
 	amiga_state::machine_reset();
 
 	// reset zorro devices
-	m_zorro->reset();
+	m_zorro->busrst_w(0);
+	m_zorro->busrst_w(1);
 }
 
-WRITE_LINE_MEMBER( a2000_state::zorro2_int2_w )
+void a2000_state::zorro2_int2_w(int state)
 {
 	m_zorro2_int2 = state;
 	update_int2();
 }
 
-WRITE_LINE_MEMBER( a2000_state::zorro2_int6_w )
+void a2000_state::zorro2_int6_w(int state)
 {
 	m_zorro2_int6 = state;
 	update_int6();
@@ -878,13 +874,13 @@ void a500_state::machine_reset()
 	m_side->reset();
 }
 
-WRITE_LINE_MEMBER( a500_state::side_int2_w )
+void a500_state::side_int2_w(int state)
 {
 	m_side_int2 = state;
 	update_int2();
 }
 
-WRITE_LINE_MEMBER( a500_state::side_int6_w )
+void a500_state::side_int6_w(int state)
 {
 	m_side_int6 = state;
 	update_int6();
@@ -973,13 +969,13 @@ bool a600_state::int6_pending()
 	return m_cia_1_irq || m_gayle_int6;
 }
 
-WRITE_LINE_MEMBER( a600_state::gayle_int2_w )
+void a600_state::gayle_int2_w(int state)
 {
 	m_gayle_int2 = state;
 	update_int2();
 }
 
-WRITE_LINE_MEMBER( a600_state::gayle_int6_w )
+void a600_state::gayle_int6_w(int state)
 {
 	m_gayle_int6 = state;
 	update_int6();
@@ -995,13 +991,13 @@ bool a1200_state::int6_pending()
 	return m_cia_1_irq || m_gayle_int6;
 }
 
-WRITE_LINE_MEMBER( a1200_state::gayle_int2_w )
+void a1200_state::gayle_int2_w(int state)
 {
 	m_gayle_int2 = state;
 	update_int2();
 }
 
-WRITE_LINE_MEMBER( a1200_state::gayle_int6_w )
+void a1200_state::gayle_int6_w(int state)
 {
 	m_gayle_int6 = state;
 	update_int6();
@@ -1045,7 +1041,7 @@ void a4000_state::ide_w(offs_t offset, u16 data, u16 mem_mask)
 		m_ata->cs0_swap_w((offset >> 1) & 0x07, data, mem_mask);
 }
 
-WRITE_LINE_MEMBER( a4000_state::ide_interrupt_w )
+void a4000_state::ide_interrupt_w(int state)
 {
 	m_ide_interrupt = state;
 }
@@ -1090,7 +1086,7 @@ void a4000_state::motherboard_w(offs_t offset, u32 data, u32 mem_mask)
 	logerror("motherboard_w(%06x): %08x & %08x\n", offset, data, mem_mask);
 }
 
-WRITE_LINE_MEMBER(cd32_state::akiko_int_w)
+void cd32_state::akiko_int_w(int state)
 {
 	set_interrupt(INTENA_SETCLR | INTENA_PORTS);
 }
@@ -1171,13 +1167,13 @@ u16 cd32_state::handle_joystick_potgor(u16 potgor)
 	return potgor;
 }
 
-CUSTOM_INPUT_MEMBER( cd32_state::cd32_input )
+ioport_value cd32_state::cd32_input()
 {
 	return handle_joystick_potgor(m_potgo_value) >> 8;
 }
 
 template <int P>
-READ_LINE_MEMBER( cd32_state::cd32_sel_mirror_input )
+int cd32_state::cd32_sel_mirror_input()
 {
 	u8 bits = m_player_ports[P]->read();
 	return (bits & 0x20)>>5;
@@ -1501,7 +1497,7 @@ void a4000_state::a4000t_mem(address_map &map)
 //**************************************************************************
 
 template <int P>
-CUSTOM_INPUT_MEMBER( amiga_state::amiga_joystick_convert )
+ioport_value amiga_state::amiga_joystick_convert()
 {
 	uint8_t bits = m_joy_ports[P].read_safe(0xff);
 
@@ -1526,16 +1522,16 @@ static INPUT_PORTS_START( amiga )
 	PORT_CONFSETTING(0x20, DEF_STR(Joystick) )
 
 	PORT_START("cia_0_port_a")
-	PORT_BIT(0x3f, IP_ACTIVE_HIGH, IPT_CUSTOM) PORT_CUSTOM_MEMBER(amiga_state, floppy_drive_status)
+	PORT_BIT(0x3f, IP_ACTIVE_HIGH, IPT_CUSTOM) PORT_CUSTOM_MEMBER(FUNC(amiga_state::floppy_drive_status))
 	PORT_BIT(0x40, IP_ACTIVE_LOW,  IPT_BUTTON1) PORT_PLAYER(1)
 	PORT_BIT(0x80, IP_ACTIVE_LOW,  IPT_BUTTON1) PORT_PLAYER(2)
 
 	PORT_START("joy_0_dat")
-	PORT_BIT(0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM) PORT_CUSTOM_MEMBER(amiga_state, amiga_joystick_convert<0>)
+	PORT_BIT(0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM) PORT_CUSTOM_MEMBER(FUNC(amiga_state::amiga_joystick_convert<0>))
 	PORT_BIT(0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED)
 
 	PORT_START("joy_1_dat")
-	PORT_BIT(0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM) PORT_CUSTOM_MEMBER(amiga_state, amiga_joystick_convert<1>)
+	PORT_BIT(0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM) PORT_CUSTOM_MEMBER(FUNC(amiga_state::amiga_joystick_convert<1>))
 	PORT_BIT(0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED)
 
 	PORT_START("potgo")
@@ -1576,19 +1572,19 @@ INPUT_PORTS_START( cd32 )
 	PORT_MODIFY("cia_0_port_a")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_CUSTOM )
 	// this is the regular port for reading a single button joystick on the Amiga, many CD32 games require this to mirror the pad start button!
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(cd32_state, cd32_sel_mirror_input<0>)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(cd32_state, cd32_sel_mirror_input<1>)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(cd32_state::cd32_sel_mirror_input<0>))
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(cd32_state::cd32_sel_mirror_input<1>))
 
 	PORT_MODIFY("joy_0_dat")
-	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(amiga_state, amiga_joystick_convert<0>)
+	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(amiga_state::amiga_joystick_convert<0>))
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_MODIFY("joy_1_dat")
-	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(amiga_state, amiga_joystick_convert<1>)
+	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(amiga_state::amiga_joystick_convert<1>))
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_MODIFY("potgo")
-	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(cd32_state, cd32_input)
+	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(cd32_state::cd32_input))
 	PORT_BIT( 0x00ff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	// CD32 '11' button pad (4 dpad directions + 7 buttons), not read directly
@@ -1653,7 +1649,7 @@ void amiga_state::amiga_base(machine_config &config)
 	m_cia_1->irq_wr_callback().set(FUNC(amiga_state::cia_1_irq));
 	m_cia_1->pa_rd_callback().set(FUNC(amiga_state::cia_1_port_a_read));
 	m_cia_1->pa_wr_callback().set(FUNC(amiga_state::cia_1_port_a_write));
-	m_cia_1->pb_wr_callback().set(m_fdc, FUNC(amiga_fdc_device::ciaaprb_w));
+	m_cia_1->pb_wr_callback().set(m_fdc, FUNC(paula_fdc_device::ciaaprb_w));
 
 	// audio
 	SPEAKER(config, "lspeaker").front_left();
@@ -1667,20 +1663,20 @@ void amiga_state::amiga_base(machine_config &config)
 	m_paula->int_cb().set(FUNC(amiga_state::paula_int_w));
 
 	// floppy drives
-	AMIGA_FDC(config, m_fdc, amiga_state::CLK_7M_PAL);
+	PAULA_FDC(config, m_fdc, amiga_state::CLK_7M_PAL);
 	m_fdc->index_callback().set(m_cia_1, FUNC(mos8520_device::flag_w));
 	m_fdc->read_dma_callback().set(FUNC(amiga_state::chip_ram_r));
 	m_fdc->write_dma_callback().set(FUNC(amiga_state::chip_ram_w));
 	m_fdc->dskblk_callback().set(FUNC(amiga_state::fdc_dskblk_w));
 	m_fdc->dsksyn_callback().set(FUNC(amiga_state::fdc_dsksyn_w));
-	FLOPPY_CONNECTOR(config, "fdc:0", amiga_floppies, "35dd", amiga_fdc_device::floppy_formats).enable_sound(true);
-	FLOPPY_CONNECTOR(config, "fdc:1", amiga_floppies, nullptr, amiga_fdc_device::floppy_formats).enable_sound(true);
-	FLOPPY_CONNECTOR(config, "fdc:2", amiga_floppies, nullptr, amiga_fdc_device::floppy_formats).enable_sound(true);
-	FLOPPY_CONNECTOR(config, "fdc:3", amiga_floppies, nullptr, amiga_fdc_device::floppy_formats).enable_sound(true);
+	FLOPPY_CONNECTOR(config, "fdc:0", amiga_floppies, "35dd", paula_fdc_device::floppy_formats).enable_sound(true);
+	FLOPPY_CONNECTOR(config, "fdc:1", amiga_floppies, nullptr, paula_fdc_device::floppy_formats).enable_sound(true);
+	FLOPPY_CONNECTOR(config, "fdc:2", amiga_floppies, nullptr, paula_fdc_device::floppy_formats).enable_sound(true);
+	FLOPPY_CONNECTOR(config, "fdc:3", amiga_floppies, nullptr, paula_fdc_device::floppy_formats).enable_sound(true);
 
 	// TODO: shouldn't have a clock
 	// (finite state machine, controlled by Agnus beams)
-	AMIGA_COPPER(config, m_copper, amiga_state::CLK_7M_PAL);
+	AGNUS_COPPER(config, m_copper, amiga_state::CLK_7M_PAL);
 	m_copper->set_host_cpu_tag(m_maincpu);
 	m_copper->mem_read_cb().set(FUNC(amiga_state::chip_ram_r));
 	m_copper->set_ecs_mode(false);
@@ -1710,6 +1706,7 @@ void amiga_state::amiga_base(machine_config &config)
 	SOFTWARE_LIST(config, "flop_list").set_original("amiga_flop");
 	SOFTWARE_LIST(config, "ocs_list").set_original("amigaocs_flop");
 	SOFTWARE_LIST(config, "demos_list").set_original("amiga_demos");
+	SOFTWARE_LIST(config, "amigacd_list").set_original("amiga_cd");
 }
 
 void a1000_state::a1000(machine_config &config)
@@ -2042,10 +2039,11 @@ void a600_state::a600(machine_config &config)
 	ata.irq_handler().set("gayle", FUNC(gayle_device::ide_interrupt_w));
 
 	PCCARD_SLOT(config, m_pcmcia, pcmcia_devices, nullptr);
-	m_pcmcia->card_detect_cb().set("gayle", FUNC(gayle_device::cc_cd_w));
-	m_pcmcia->battery_voltage_1_cb().set("gayle", FUNC(gayle_device::cc_bvd1_w));
-	m_pcmcia->battery_voltage_2_cb().set("gayle", FUNC(gayle_device::cc_bvd2_w));
-	m_pcmcia->write_protect_cb().set("gayle", FUNC(gayle_device::cc_wp_w));
+	m_pcmcia->cd1().set("gayle", FUNC(gayle_device::cc_cd1_w));
+	m_pcmcia->cd2().set("gayle", FUNC(gayle_device::cc_cd2_w));
+	m_pcmcia->bvd1().set("gayle", FUNC(gayle_device::cc_bvd1_w));
+	m_pcmcia->bvd2().set("gayle", FUNC(gayle_device::cc_bvd2_w));
+	m_pcmcia->wp().set("gayle", FUNC(gayle_device::cc_wp_w));
 
 	// software
 	SOFTWARE_LIST(config, "ecs_list").set_original("amigaecs_flop");
@@ -2086,7 +2084,7 @@ void a1200_state::a1200(machine_config &config)
 	kbd.kdat_handler().set("cia_0", FUNC(mos8520_device::sp_w));
 	kbd.krst_handler().set(FUNC(a1200_state::kbreset_w));
 
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 
 	MCFG_VIDEO_START_OVERRIDE(amiga_state, amiga_aga)
 
@@ -2109,10 +2107,11 @@ void a1200_state::a1200(machine_config &config)
 #endif
 
 	PCCARD_SLOT(config, m_pcmcia, pcmcia_devices, nullptr);
-	m_pcmcia->card_detect_cb().set("gayle", FUNC(gayle_device::cc_cd_w));
-	m_pcmcia->battery_voltage_1_cb().set("gayle", FUNC(gayle_device::cc_bvd1_w));
-	m_pcmcia->battery_voltage_2_cb().set("gayle", FUNC(gayle_device::cc_bvd2_w));
-	m_pcmcia->write_protect_cb().set("gayle", FUNC(gayle_device::cc_wp_w));
+	m_pcmcia->cd1().set("gayle", FUNC(gayle_device::cc_cd1_w));
+	m_pcmcia->cd2().set("gayle", FUNC(gayle_device::cc_cd2_w));
+	m_pcmcia->bvd1().set("gayle", FUNC(gayle_device::cc_bvd1_w));
+	m_pcmcia->bvd2().set("gayle", FUNC(gayle_device::cc_bvd2_w));
+	m_pcmcia->wp().set("gayle", FUNC(gayle_device::cc_wp_w));
 
 	// software
 	SOFTWARE_LIST(config, "aga_list").set_original("amigaaga_flop");
@@ -2127,7 +2126,7 @@ void a1200_state::a1200n(machine_config &config)
 	subdevice<gayle_device>("gayle")->set_clock(amiga_state::CLK_28M_NTSC / 2);
 	config.device_remove("screen");
 	ntsc_video(config);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 	m_paula->set_clock(amiga_state::CLK_C1_NTSC);
 	m_cia_0->set_clock(amiga_state::CLK_E_NTSC);
 	m_cia_1->set_clock(amiga_state::CLK_E_NTSC);
@@ -2153,7 +2152,7 @@ void a4000_state::a4000(machine_config &config)
 	kbd.kclk_handler().set("cia_0", FUNC(mos8520_device::cnt_w));
 	kbd.kdat_handler().set("cia_0", FUNC(mos8520_device::sp_w));
 
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 
 	MCFG_VIDEO_START_OVERRIDE(amiga_state, amiga_aga)
 
@@ -2178,7 +2177,7 @@ void a4000_state::a4000n(machine_config &config)
 
 	config.device_remove("screen");
 	ntsc_video(config);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 	m_paula->set_clock(amiga_state::CLK_C1_NTSC);
 	m_cia_0->set_clock(amiga_state::CLK_E_NTSC);
 	m_cia_1->set_clock(amiga_state::CLK_E_NTSC);
@@ -2201,7 +2200,7 @@ void a4000_state::a400030n(machine_config &config)
 	a400030(config);
 	config.device_remove("screen");
 	ntsc_video(config);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 	m_paula->set_clock(amiga_state::CLK_C1_NTSC);
 	m_cia_0->set_clock(amiga_state::CLK_E_NTSC);
 	m_cia_1->set_clock(amiga_state::CLK_E_NTSC);
@@ -2235,20 +2234,15 @@ void cd32_state::cd32(machine_config &config)
 	akiko.sda_r_callback().set("i2cmem", FUNC(i2cmem_device::read_sda));
 	akiko.sda_w_callback().set("i2cmem", FUNC(i2cmem_device::write_sda));
 
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 
 	MCFG_VIDEO_START_OVERRIDE(amiga_state, amiga_aga)
-
-	CDDA(config, m_cdda);
-	m_cdda->add_route(0, "lspeaker", 0.50);
-	m_cdda->add_route(1, "rspeaker", 0.50);
 
 	m_cia_0->pa_wr_callback().set(FUNC(cd32_state::akiko_cia_0_port_a_write));
 	m_cia_0->sp_wr_callback().set_nop();
 
-	CDROM(config, "cdrom").set_interface("cdrom");
 	SOFTWARE_LIST(config, "cd32_list").set_original("cd32");
-	SOFTWARE_LIST(config, "cd_list").set_original("cdtv");
+	SOFTWARE_LIST(config, "cd_list").set_compatible("cdtv");
 }
 
 void cd32_state::cd32n(machine_config &config)
@@ -2258,7 +2252,7 @@ void cd32_state::cd32n(machine_config &config)
 	m_maincpu->set_clock(amiga_state::CLK_28M_NTSC / 2);
 	config.device_remove("screen");
 	ntsc_video(config);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 	m_paula->set_clock(amiga_state::CLK_C1_NTSC);
 	m_cia_0->set_clock(amiga_state::CLK_E_NTSC);
 	m_cia_1->set_clock(amiga_state::CLK_E_NTSC);
@@ -2282,7 +2276,7 @@ void a4000_state::a4000tn(machine_config &config)
 
 	config.device_remove("screen");
 	ntsc_video(config);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga_aga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 	m_paula->set_clock(amiga_state::CLK_C1_NTSC);
 	m_cia_0->set_clock(amiga_state::CLK_E_NTSC);
 	m_cia_1->set_clock(amiga_state::CLK_E_NTSC);
@@ -2340,6 +2334,14 @@ ROM_START( a2000 )
 	ROMX_LOAD("kick40063.u2", 0x00000, 0x80000, CRC(fc24ae0d) SHA1(3b7f1493b27e212830f989f26ca76c02049f09ca), ROM_GROUPWORD | ROM_BIOS(3))
 	ROM_SYSTEM_BIOS(4, "logica2", "Logica Diagnostic 2.0")
 	ROMX_LOAD("logica2.u2",   0x00000, 0x80000, CRC(8484f426) SHA1(ba10d16166b2e2d6177c979c99edf8462b21651e), ROM_GROUPWORD | ROM_BIOS(4))
+#if 0 // not enabled yet, kickstart 3.2 is new and actively sold
+	ROM_SYSTEM_BIOS(5, "kick32",  "Kickstart 3.2 (47.96)")
+	ROMX_LOAD("kick47096.u2", 0x00000, 0x80000, CRC(8173d7b6) SHA1(b88e364daf23c9c9920e548b0d3d944e65b1031d), ROM_GROUPWORD | ROM_BIOS(5))
+	ROM_SYSTEM_BIOS(6, "kick321", "Kickstart 3.2 (47.102)")
+	ROMX_LOAD("kick47102.u2", 0x00000, 0x80000, CRC(4f078456) SHA1(8f64ada68a7f128ba782e8dc9fa583344171590a), ROM_GROUPWORD | ROM_BIOS(6))
+	ROM_SYSTEM_BIOS(7, "kick322", "Kickstart 3.2 (47.111)")
+	ROMX_LOAD("kick47111.u2", 0x00000, 0x80000, CRC(e4458462) SHA1(7d5ebe686b69d59a863cc77a36b2cd60359a9ed2), ROM_GROUPWORD | ROM_BIOS(7))
+#endif
 ROM_END
 
 // Amiga 2000CR chip location: U500

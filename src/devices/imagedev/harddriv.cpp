@@ -21,6 +21,7 @@
 #include "harddisk.h"
 #include "romload.h"
 
+#include "multibyte.h"
 #include "opresolv.h"
 
 
@@ -37,7 +38,7 @@ static char const *const hd_option_spec =
 
 
 // device type definition
-DEFINE_DEVICE_TYPE(HARDDISK, harddisk_image_device, "harddisk_image", "Harddisk")
+DEFINE_DEVICE_TYPE(HARDDISK, harddisk_image_device, "harddisk_image", "Hard disk")
 
 //-------------------------------------------------
 //  harddisk_image_base_device - constructor
@@ -107,10 +108,8 @@ void harddisk_image_device::device_start()
 
 	m_chd = nullptr;
 
-	// try to locate the CHD from a DISK_REGION
-	chd_file *handle = machine().rom_load().get_disk_handle(tag());
-	if (handle)
-		m_hard_disk_handle.reset(new hard_disk_file(handle));
+	if (has_preset_images())
+		setup_current_preset_image();
 	else
 		m_hard_disk_handle.reset();
 }
@@ -164,6 +163,12 @@ std::pair<std::error_condition, std::string> harddisk_image_device::call_create(
 		return std::make_pair(err, std::string());
 
 	return std::make_pair(internal_load_hd(), std::string());
+}
+
+void harddisk_image_device::setup_current_preset_image()
+{
+	chd_file *chd = current_preset_image_chd();
+	m_hard_disk_handle.reset(new hard_disk_file(chd));
 }
 
 void harddisk_image_device::call_unload()
@@ -227,6 +232,12 @@ static std::error_condition open_disk_diff(emu_options &options, const char *nam
 
 std::error_condition harddisk_image_device::internal_load_hd()
 {
+	if (has_preset_images())
+	{
+		setup_current_preset_image();
+		return std::error_condition();
+	}
+
 	std::error_condition err;
 	m_chd = nullptr;
 	uint8_t header[64];
@@ -276,48 +287,59 @@ std::error_condition harddisk_image_device::internal_load_hd()
 	if (m_chd)
 	{
 		// open the hard disk file
-		m_hard_disk_handle.reset(new hard_disk_file(m_chd));
-		if (m_hard_disk_handle)
-			return std::error_condition();
+		try
+		{
+			m_hard_disk_handle.reset(new hard_disk_file(m_chd));
+			if (m_hard_disk_handle)
+				return std::error_condition();
+		}
+		catch (...)
+		{
+			err = image_error::INVALIDIMAGE;
+		}
+	}
+	else if (!is_open())
+	{
+		err = image_error::UNSPECIFIED;
 	}
 	else
 	{
-		if (is_open())
+		uint32_t skip = 0;
+
+		if (!memcmp(header, "2IMG", 4)) // check for 2MG format
 		{
-			uint32_t skip = 0;
-
-			// check for 2MG format
-			if (!memcmp(header, "2IMG", 4))
+			skip = get_u32le(&header[0x18]);
+			osd_printf_verbose("harddriv: detected 2MG, creator is %c%c%c%c, data at %08x\n", header[4], header[5], header[6], header[7], skip);
+		}
+		else if (is_filetype("hdi")) // check for HDI format
+		{
+			skip = get_u32le(&header[0x8]);
+			uint32_t data_size = get_u32le(&header[0xc]);
+			if (data_size == length() - skip)
 			{
-				skip = header[0x18] | (header[0x19] << 8) | (header[0x1a] << 16) | (header[0x1b] << 24);
-				osd_printf_verbose("harddriv: detected 2MG, creator is %c%c%c%c, data at %08x\n", header[4], header[5], header[6], header[7], skip);
+				osd_printf_verbose("harddriv: detected Anex86 HDI, data at %08x\n", skip);
 			}
-			// check for HDI format
-			else if (is_filetype("hdi"))
+			else
 			{
-				skip = header[0x8] | (header[0x9] << 8) | (header[0xa] << 16) | (header[0xb] << 24);
-				uint32_t data_size = header[0xc] | (header[0xd] << 8) | (header[0xe] << 16) | (header[0xf] << 24);
-				if (data_size == length() - skip)
-				{
-					osd_printf_verbose("harddriv: detected Anex86 HDI, data at %08x\n", skip);
-				}
-				else
-				{
-					skip = 0;
-				}
+				skip = 0;
 			}
+		}
 
+		try
+		{
 			m_hard_disk_handle.reset(new hard_disk_file(image_core_file(), skip));
 			if (m_hard_disk_handle)
 				return std::error_condition();
 		}
-
-		return image_error::UNSPECIFIED;
+		catch (...)
+		{
+			err = image_error::INVALIDIMAGE;
+		}
 	}
 
 	/* if we had an error, close out the CHD */
-	m_origchd.close();
 	m_diffchd.close();
+	m_origchd.close();
 	m_chd = nullptr;
 
 	if (err)
@@ -325,3 +347,40 @@ std::error_condition harddisk_image_device::internal_load_hd()
 	else
 		return image_error::UNSPECIFIED;
 }
+
+const hard_disk_file::info &harddisk_image_device::get_info() const
+{
+	return m_hard_disk_handle->get_info();
+}
+
+bool harddisk_image_device::read(uint32_t lbasector, void *buffer)
+{
+	return m_hard_disk_handle->read(lbasector, buffer);
+}
+
+bool harddisk_image_device::write(uint32_t lbasector, const void *buffer)
+{
+	return m_hard_disk_handle->write(lbasector, buffer);
+}
+
+
+bool harddisk_image_device::set_block_size(uint32_t blocksize)
+{
+	return m_hard_disk_handle->set_block_size(blocksize);
+}
+
+std::error_condition harddisk_image_device::get_inquiry_data(std::vector<uint8_t> &data) const
+{
+	return m_hard_disk_handle->get_inquiry_data(data);
+}
+
+std::error_condition harddisk_image_device::get_cis_data(std::vector<uint8_t> &data) const
+{
+	return m_hard_disk_handle->get_cis_data(data);
+}
+
+std::error_condition harddisk_image_device::get_disk_key_data(std::vector<uint8_t> &data) const
+{
+	return m_hard_disk_handle->get_disk_key_data(data);
+}
+

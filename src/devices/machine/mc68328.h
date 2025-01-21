@@ -122,21 +122,21 @@ public:
 	auto out_lsclk() { return m_out_lsclk_cb.bind(); }
 	auto out_ld() { return m_out_ld_cb.bind(); }
 
-	DECLARE_WRITE_LINE_MEMBER(irq5_w);
-
 	template <typename... T>
 	void set_lcd_info_changed(T &&... args)
 	{
 		m_lcd_info_changed_cb.set(std::forward<T>(args)...);
 	}
 
+	void irq5_w(int state);
+
 protected:
 	mc68328_base_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock);
 
-	// device-level overrides
-	virtual void device_resolve_objects() override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	// device_t implementation
+	virtual void device_resolve_objects() override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	enum : u8
 	{
@@ -821,10 +821,9 @@ public:
 	template <int Line> auto in_port_m() { return m_in_port_m_cb[Line].bind(); }
 
 protected:
-	// device-level overrides
-	virtual void device_resolve_objects() override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	enum : u8
@@ -1011,8 +1010,8 @@ private:
 	u8  m_lotcr;        // Octet Terminal Count Register
 	u16 m_lgpmr;        // Gray Palette Mapping Register
 
-	void internal_map(address_map &map);
-	void cpu_space_map(address_map &map);
+	void internal_map(address_map &map) ATTR_COLD;
+	void cpu_space_map(address_map &map) ATTR_COLD;
 
 	// internal state
 	virtual void register_state_save() override;
@@ -1055,10 +1054,9 @@ public:
 	mc68ez328_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
 
 protected:
-	// device-level overrides
-	virtual void device_resolve_objects() override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	enum : u8
@@ -1215,8 +1213,8 @@ private:
 	u16  m_dayalarm;    // RTC Day Alarm Register
 	u8   m_sam_cnt;     // RTC Sample Timer Counter (internal, not readable)
 
-	void internal_map(address_map &map);
-	void cpu_space_map(address_map &map);
+	void internal_map(address_map &map) ATTR_COLD;
+	void cpu_space_map(address_map &map) ATTR_COLD;
 
 	// internal state
 	virtual void register_state_save() override;

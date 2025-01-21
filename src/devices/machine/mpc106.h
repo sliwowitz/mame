@@ -38,24 +38,27 @@ public:
 	void set_map_type(map_type maptype);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	virtual void reset_all_mappings() override;
 
 	virtual void map_extra(u64 memory_window_start, u64 memory_window_end, u64 memory_offset, address_space *memory_space,
 						   u64 io_window_start, u64 io_window_end, u64 io_offset, address_space *io_space) override;
 
-	virtual void config_map(address_map &map) override;
+	virtual void config_map(address_map &map) override ATTR_COLD;
 
 	virtual space_config_vector memory_space_config() const override;
 
 private:
-	void access_map(address_map &map);
+	void access_map_le(address_map &map) ATTR_COLD;
+	void access_map_be(address_map &map) ATTR_COLD;
 	u32 be_config_address_r();
 	void be_config_address_w(offs_t offset, u32 data, u32 mem_mask = ~0);
 	u32 be_config_data_r(offs_t offset, u32 mem_mask = ~0);
 	void be_config_data_w(offs_t offset, u32 data, u32 mem_mask = ~0);
+	template <u32 Base> u32 cpu_memory_r(offs_t offset, u32 mem_mask);
+	template <u32 Base> void cpu_memory_w(offs_t offset, u32 data, u32 mem_mask);
 	template <u32 Base> u32 pci_memory_r(offs_t offset, u32 mem_mask);
 	template <u32 Base> void pci_memory_w(offs_t offset, u32 data, u32 mem_mask);
 	template <u32 Base> u32 pci_io_r(offs_t offset, u32 mem_mask);
@@ -71,6 +74,8 @@ private:
 	void memory_end_w(offs_t offset, u32 data, u32 mem_mask);
 	u8 memory_enable_r();
 	void memory_enable_w(offs_t offset, u8 data);
+	u32 picr1_r();
+	void picr1_w(u32 data);
 
 	address_space_config m_mem_config, m_io_config;
 	const char *m_rom_tag;
@@ -85,6 +90,7 @@ private:
 	u8 m_pwrconfig2;
 	u32 m_memory_starts[4];
 	u32 m_memory_ends[4];
+	u32 m_picr1;
 	u8 m_memory_bank_enable;
 };
 

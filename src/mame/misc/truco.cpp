@@ -70,7 +70,7 @@
   - U1 : 40-pin IC  YES   CPU         MOTOROLA M6809EP               8-bit microprocessor.
   - U2 : 28-pin IC  YES   ROM         M27128A (or M27512FI)          NMOS 128K 16K x 8 UV EPROM (or 64K x 8).
   - U3 : 28-pin IC  YES   ROM         M27128A (or M27512FI)          NMOS 128K 16K x 8 UV EPROM (or 64K x 8).
-  - U4 : 40-pin IC  YES   I/O         EF6821P                        PIA: Peripheral Interface Adapter.
+  - U4 : 40-pin IC  YES   I/O         MC6821P                        PIA: Peripheral Interface Adapter.
   - U5 : 16-pin IC  YES   TTL         74HC157                        Quad 2 Channel Multiplexer.
   - U6 : 16-pin IC  YES   TTL         74HC157                        Quad 2 Channel Multiplexer.
   - U7 : 16-pin IC  YES   TTL         74HC157                        Quad 2 Channel Multiplexer.
@@ -208,7 +208,7 @@
 
 
 // configurable logging
-#define LOG_PIA     (1U <<  1)
+#define LOG_PIA     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_PIA)
 
@@ -236,8 +236,8 @@ public:
 	void truco(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -253,21 +253,19 @@ private:
 	uint8_t m_trigger = 0;
 
 	void porta_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(pia_ca2_w);
+	void pia_ca2_w(int state);
 	void portb_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(pia_irqa_w);
-	DECLARE_WRITE_LINE_MEMBER(pia_irqb_w);
+	void pia_irqa_w(int state);
+	void pia_irqb_w(int state);
 
 	void palette(palette_device &palette) const;
 
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	INTERRUPT_GEN_MEMBER(interrupt);
-	void main_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
 };
 
-
-// video
 
 void truco_state::palette(palette_device &palette) const
 {
@@ -309,8 +307,6 @@ uint32_t truco_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap,
 }
 
 
-// machine
-
 /*******************************************
 *           Read/Write Handlers            *
 *******************************************/
@@ -320,7 +316,7 @@ void truco_state::porta_w(uint8_t data)
 	LOGPIA("Port A writes: %2x\n", data);
 }
 
-WRITE_LINE_MEMBER(truco_state::pia_ca2_w)
+void truco_state::pia_ca2_w(int state)
 {
 /*  PIA CA2 line is connected to IC U19, leg 11.
     The IC was successfully identified as MAX691.
@@ -341,12 +337,12 @@ void truco_state::portb_w(uint8_t data)
 		LOGPIA("Port B writes: %2x\n", data);
 }
 
-WRITE_LINE_MEMBER(truco_state::pia_irqa_w)
+void truco_state::pia_irqa_w(int state)
 {
 	LOGPIA("PIA irq A: %2x\n", state);
 }
 
-WRITE_LINE_MEMBER(truco_state::pia_irqb_w)
+void truco_state::pia_irqb_w(int state)
 {
 	LOGPIA("PIA irq B: %2x\n", state);
 }
@@ -504,7 +500,7 @@ void truco_state::truco(machine_config &config)
 
 	WATCHDOG_TIMER(config, m_watchdog).set_time(attotime::from_msec(1600)); // 1.6 seconds
 
-	pia6821_device &pia(PIA6821(config, "pia0", 0));
+	pia6821_device &pia(PIA6821(config, "pia0"));
 	pia.readpa_handler().set_ioport("P1");
 	pia.readpb_handler().set_ioport("JMPRS");
 	pia.writepa_handler().set(FUNC(truco_state::porta_w));
