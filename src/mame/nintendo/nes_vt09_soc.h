@@ -28,11 +28,10 @@ public:
 
 protected:
 	nes_vt09_soc_device(const machine_config& mconfig, device_type type, const char* tag, device_t* owner, uint32_t clock);
-	void device_start() override;
 
 	virtual void device_add_mconfig(machine_config& config) override;
 
-	void nes_vt_4k_ram_map(address_map& map);
+	void nes_vt_4k_ram_map(address_map &map) ATTR_COLD;
 
 	// are these even part of vt09, or should they be moved out of here rather than this being treated as a base class for them?
 	devcb_write8 m_upper_write_412c_callback;

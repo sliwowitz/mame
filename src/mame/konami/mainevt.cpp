@@ -48,7 +48,7 @@ Both games run on Konami's PWB351024A PCB
 
 
 // configurable logging
-#define LOG_SHBANK     (1U <<  1)
+#define LOG_SHBANK     (1U << 1)
 
 //#define VERBOSE (LOG_GENERAL | LOG_SHBANK)
 
@@ -61,7 +61,7 @@ namespace {
 
 class base_state : public driver_device
 {
-public:
+protected:
 	base_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
@@ -73,11 +73,7 @@ public:
 		, m_leds(*this, "led%u", 0U)
 	{ }
 
-	void devstors(machine_config &config);
-	void mainevt(machine_config &config);
-
-protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 	// devices
 	required_device<cpu_device> m_maincpu;
@@ -110,6 +106,9 @@ public:
 
 	void mainevt(machine_config &config);
 
+protected:
+	virtual void machine_reset() override ATTR_COLD;
+
 private:
 	// devices
 	required_device<upd7759_device> m_upd7759;
@@ -123,8 +122,8 @@ private:
 	K052109_CB_MEMBER(tile_callback);
 	K051960_CB_MEMBER(sprite_callback);
 
-	void main_map(address_map &map);
-	void sound_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 };
 
 class devstors_state : public base_state
@@ -137,8 +136,8 @@ public:
 	void devstors(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	// misc
@@ -150,16 +149,14 @@ private:
 	INTERRUPT_GEN_MEMBER(sound_timer_irq);
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	DECLARE_WRITE_LINE_MEMBER(vblank_w);
+	void vblank_w(int state);
 	K052109_CB_MEMBER(tile_callback);
 	K051960_CB_MEMBER(sprite_callback);
 
-	void main_map(address_map &map);
-	void sound_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -249,14 +246,12 @@ uint32_t devstors_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 }
 
 
-// machine
-
 void devstors_state::nmienable_w(uint8_t data)
 {
 	m_nmi_enable = data;
 }
 
-WRITE_LINE_MEMBER(devstors_state::vblank_w)
+void devstors_state::vblank_w(int state)
 {
 	if (state && m_nmi_enable)
 		m_maincpu->pulse_input_line(INPUT_LINE_NMI, attotime::zero);
@@ -301,15 +296,15 @@ uint8_t mainevt_state::sh_busy_r()
 
 void mainevt_state::sh_irqcontrol_w(uint8_t data)
 {
-	m_upd7759->reset_w(data & 2);
-	m_upd7759->start_w(data & 1);
+	m_upd7759->reset_w(BIT(data, 1));
+	m_upd7759->start_w(!BIT(data, 0));
 
-	m_sound_irq_mask = data & 4;
+	m_sound_irq_mask = BIT(data, 2);
 }
 
 void devstors_state::sh_irqcontrol_w(uint8_t data)
 {
-	m_sound_irq_mask = data & 4;
+	m_sound_irq_mask = BIT(data, 2);
 }
 
 void mainevt_state::sh_bankswitch_w(uint8_t data)
@@ -599,6 +594,11 @@ void base_state::machine_start()
 	m_rombank->configure_entries(0, 4, memregion("maincpu")->base(), 0x2000);
 
 	save_item(NAME(m_sound_irq_mask));
+}
+
+void mainevt_state::machine_reset()
+{
+	sh_irqcontrol_w(0);
 }
 
 void devstors_state::machine_start()
