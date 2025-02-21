@@ -20,8 +20,6 @@ MIPS III/IV emulator.
 #include "cpu/drcuml.h"
 #include "ps2vu.h"
 
-#define ENABLE_O2_DPRINTF       (0)
-
 DECLARE_DEVICE_TYPE(R4000BE, r4000be_device)
 DECLARE_DEVICE_TYPE(R4000LE, r4000le_device)
 DECLARE_DEVICE_TYPE(R4400BE, r4400be_device)
@@ -49,6 +47,7 @@ DECLARE_DEVICE_TYPE(QED5271LE, qed5271le_device)
 DECLARE_DEVICE_TYPE(RM7000BE, rm7000be_device)
 DECLARE_DEVICE_TYPE(RM7000LE, rm7000le_device)
 DECLARE_DEVICE_TYPE(R5900LE, r5900le_device)
+DECLARE_DEVICE_TYPE(R5900BE, r5900be_device)
 
 
 /***************************************************************************
@@ -314,14 +313,13 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_stop() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_stop() override ATTR_COLD;
 
 	// device_execute_interface overrides
 	virtual uint32_t execute_min_cycles() const noexcept override { return 1; }
 	virtual uint32_t execute_max_cycles() const noexcept override { return 40; }
-	virtual uint32_t execute_input_lines() const noexcept override { return 6; }
 	virtual void execute_run() override;
 	virtual void execute_set_input(int inputnum, int state) override;
 
@@ -450,7 +448,6 @@ protected:
 	uint32_t        m_byte_xor;
 	uint32_t        m_word_xor;
 	uint32_t        m_dword_xor;
-	data_accessors  m_memory;
 
 	/* cache memory */
 	size_t          c_icache_size;
@@ -541,6 +538,7 @@ public:
 private:
 	uint32_t compute_config_register();
 	uint32_t compute_prid_register();
+	uint32_t compute_fpu_prid_register();
 
 	uint32_t generate_tlb_index();
 	void tlb_map_entry(int tlbindex);
@@ -655,9 +653,7 @@ private:
 	void log_opcode_desc(const opcode_desc *desclist, int indent);
 
 	void load_elf();
-#if ENABLE_O2_DPRINTF
-	void do_o2_dprintf(uint32_t fmt_addr, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t stack);
-#endif
+	[[maybe_unused]] void do_o2_dprintf(uint32_t fmt_addr, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t stack);
 };
 
 
@@ -873,24 +869,16 @@ public:
 	}
 };
 
-class r5900le_device : public mips3_device {
-public:
+class r5900_device : public mips3_device {
+protected:
 	// construction/destruction
-	template <typename T>
-	r5900le_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&vu0_tag)
-		: r5900le_device(mconfig, tag, owner, clock)
-	{
-		m_vu0.set_tag(std::forward<T>(vu0_tag));
-	}
-
-	r5900le_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
-		: mips3_device(mconfig, R5900LE, tag, owner, clock, MIPS3_TYPE_R5900, ENDIANNESS_LITTLE, 64)
+	r5900_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock, endianness_t endianness)
+		: mips3_device(mconfig, type, tag, owner, clock, MIPS3_TYPE_R5900, endianness, 64)
 		, m_vu0(*this, finder_base::DUMMY_TAG)
 	{
 	}
 
-protected:
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// device_disasm_interface overrides
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
@@ -908,8 +896,8 @@ protected:
 	void WDOUBLE(offs_t address, uint64_t data) override;
 	void WDOUBLE_MASKED(offs_t address, uint64_t data, uint64_t mem_mask) override;
 
-	bool RQUAD(offs_t address, uint64_t *result_hi, uint64_t *result_lo);
-	void WQUAD(offs_t address, uint64_t data_hi, uint64_t data_lo);
+	virtual bool RQUAD(offs_t address, uint64_t *result_hi, uint64_t *result_lo) = 0;
+	virtual void WQUAD(offs_t address, uint64_t data_hi, uint64_t data_lo) = 0;
 
 	uint64_t get_cop2_reg(int idx) override;
 	void set_cop2_reg(int idx, uint64_t val) override;
@@ -937,6 +925,46 @@ protected:
 	void check_irqs() override;
 
 	required_device<sonyvu0_device> m_vu0;
+};
+
+class r5900le_device : public r5900_device {
+public:
+	// construction/destruction
+	template <typename T>
+	r5900le_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&vu0_tag)
+		: r5900le_device(mconfig, tag, owner, clock)
+	{
+		m_vu0.set_tag(std::forward<T>(vu0_tag));
+	}
+
+	r5900le_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+		: r5900_device(mconfig, R5900LE, tag, owner, clock, ENDIANNESS_LITTLE)
+	{
+	}
+
+protected:
+	bool RQUAD(offs_t address, uint64_t *result_hi, uint64_t *result_lo) override;
+	void WQUAD(offs_t address, uint64_t data_hi, uint64_t data_lo) override;
+};
+
+class r5900be_device : public r5900_device {
+public:
+	// construction/destruction
+	template <typename T>
+	r5900be_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&vu0_tag)
+		: r5900be_device(mconfig, tag, owner, clock)
+	{
+		m_vu0.set_tag(std::forward<T>(vu0_tag));
+	}
+
+	r5900be_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock)
+		: r5900_device(mconfig, R5900BE, tag, owner, clock, ENDIANNESS_BIG)
+	{
+	}
+
+protected:
+	bool RQUAD(offs_t address, uint64_t *result_hi, uint64_t *result_lo) override;
+	void WQUAD(offs_t address, uint64_t data_hi, uint64_t data_lo) override;
 };
 
 class qed5271be_device : public mips3_device {

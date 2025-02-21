@@ -34,7 +34,7 @@ public:
 private:
 	required_device<cpu_device> m_maincpu;
 
-	void photoplays_map(address_map &map);
+	void photoplays_map(address_map &map) ATTR_COLD;
 };
 
 void photoplays_state::photoplays_map(address_map &map)
@@ -68,11 +68,11 @@ ROM_START( photoply2k1sp )
 	ROM_REGION(0x4000, "dongle", 0)
 	ROM_LOAD("sx28ac_dp_g.bin", 0x0000, 0x4000, NO_DUMP ) // 2Kbytes flash
 
-	DISK_REGION( "ide:0:hdd:image" ) // 06/06/2001
+	DISK_REGION( "ide:0:hdd" ) // 06/06/2001
 	DISK_IMAGE( "photoplay2001es", 0, BAD_DUMP SHA1(43aa4e38d57bfe4c6decddadf77d322bf30426a5) ) // May contain operator data / configuration
 ROM_END
 
 } // Anonymous namespace
 
 
-GAME( 2001, photoply2k1sp, 0, photoplays, photoplays, photoplays_state, empty_init, ROT0, "Funworld", "Photo Play 2001 (Spanish)", MACHINE_IS_SKELETON )
+GAME( 2001, photoply2k1sp, 0, photoplays, photoplays, photoplays_state, empty_init, ROT0, "Funworld", "Photo Play 2001 (Spanish)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

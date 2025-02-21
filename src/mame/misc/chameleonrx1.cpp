@@ -34,7 +34,7 @@ public:
 private:
 	required_device<cpu_device> m_maincpu;
 
-	void chameleonrx1_map(address_map &map);
+	void chameleonrx1_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -69,11 +69,11 @@ ROM_START( chamrx1 )
 	ROM_REGION32_LE(0x40000, "bios", 0)
 	ROM_LOAD("p45m6_1010_c728_gm_u5_sst49lf002a.u26", 0x00000, 0x40000, CRC(2dd3d3eb) SHA1(5bf639442807cc1aa2ad910817a2e8d2a80e7226) )
 
-	DISK_REGION( "ide:0:hdd:image" ) // Samsung SP6003H/OMD Rev.A. LBA 117,304,992 60GB PUMA
+	DISK_REGION( "ide:0:hdd" ) // Samsung SP6003H/OMD Rev.A. LBA 117,304,992 60GB PUMA
 	DISK_IMAGE( "chamrx1", 0, SHA1(01da428b8aa347222856afbdfe9dbc083ae2171c) )
 ROM_END
 
 } // Anonymous namespace
 
 
-GAME( 2003, chamrx1,  0,   chameleonrx1, chameleonrx1, chameleonrx1_state, empty_init, ROT0, "Digital Sunnil (Covielsa license)", "Chameleon RX-1",  MACHINE_IS_SKELETON )
+GAME( 2003, chamrx1,  0,   chameleonrx1, chameleonrx1, chameleonrx1_state, empty_init, ROT0, "Digital Sunnil (Covielsa license)", "Chameleon RX-1",  MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

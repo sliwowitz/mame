@@ -52,7 +52,7 @@ public:
 private:
 	required_device<cpu_device> m_maincpu;
 
-	void rbowlorama_map(address_map &map);
+	void rbowlorama_map(address_map &map) ATTR_COLD;
 };
 
 void rbowlorama_state::rbowlorama_map(address_map &map)
@@ -89,7 +89,7 @@ ROM_START( rbowlorama )
 	ROM_REGION(0x2000, "io", 0)
 	ROM_LOAD("mc908ap8.u102", 0x0000, 0x2000, NO_DUMP )
 
-	DISK_REGION( "ide:0:hdd:image" ) // Sandisk Cruzer USB 8GB flash drive
+	DISK_REGION( "ide:0:hdd" ) // Sandisk Cruzer USB 8GB flash drive
 	DISK_IMAGE( "namco_bowling", 0, BAD_DUMP SHA1(138971fa22ba5a4f0e78daad989d444ebb072213) ) // v2.1.1. May contain operator and players data
 
 /*
@@ -141,4 +141,4 @@ ROM_END
 
 } // Anonymous namespace
 
-GAME(2008, rbowlorama, 0, rbowlorama, rbowlorama, rbowlorama_state, empty_init, ROT0, "Namco / Cosmodog", "Rockin' Bowl-O-Rama (v2.1.1)", MACHINE_IS_SKELETON )
+GAME(2008, rbowlorama, 0, rbowlorama, rbowlorama, rbowlorama_state, empty_init, ROT0, "Namco / Cosmodog", "Rockin' Bowl-O-Rama (v2.1.1)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

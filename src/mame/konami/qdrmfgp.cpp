@@ -58,10 +58,10 @@ public:
 	void qdrmfgp(machine_config &config);
 	void qdrmfgp2(machine_config &config);
 
-	DECLARE_CUSTOM_INPUT_MEMBER(battery_sensor_r);
+	ioport_value battery_sensor_r();
 
 protected:
-	virtual void machine_reset() override;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -101,15 +101,15 @@ private:
 	INTERRUPT_GEN_MEMBER(qdrmfgp2_interrupt);
 	TIMER_CALLBACK_MEMBER(gp2_timer_callback);
 	TIMER_DEVICE_CALLBACK_MEMBER(qdrmfgp_interrupt);
-	DECLARE_WRITE_LINE_MEMBER(ide_interrupt);
-	DECLARE_WRITE_LINE_MEMBER(gp2_ide_interrupt);
-	DECLARE_WRITE_LINE_MEMBER(k054539_irq1_gen);
+	void ide_interrupt(int state);
+	void gp2_ide_interrupt(int state);
+	void k054539_irq1_gen(int state);
 	K056832_CB_MEMBER(qdrmfgp_tile_callback);
 	K056832_CB_MEMBER(qdrmfgp2_tile_callback);
 
-	void qdrmfgp2_map(address_map &map);
-	void qdrmfgp_k054539_map(address_map &map);
-	void qdrmfgp_map(address_map &map);
+	void qdrmfgp2_map(address_map &map) ATTR_COLD;
+	void qdrmfgp_k054539_map(address_map &map) ATTR_COLD;
+	void qdrmfgp_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -178,7 +178,7 @@ uint16_t qdrmfgp_state::inputs_r()
 	return m_control & 0x0080 ? m_inputs_port->read() : m_dsw_port->read();
 }
 
-CUSTOM_INPUT_MEMBER(qdrmfgp_state::battery_sensor_r)
+ioport_value qdrmfgp_state::battery_sensor_r()
 {
 	/* bit 0-1  battery power sensor: 3=good, 2=low, other=bad */
 	return 0x0003;
@@ -349,7 +349,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(qdrmfgp_state::qdrmfgp_interrupt)
 			m_maincpu->set_input_line(M68K_IRQ_3, ASSERT_LINE);
 }
 
-WRITE_LINE_MEMBER(qdrmfgp_state::ide_interrupt)
+void qdrmfgp_state::ide_interrupt(int state)
 {
 	if (m_control & 0x0008)
 		if (state != CLEAR_LINE)
@@ -371,7 +371,7 @@ INTERRUPT_GEN_MEMBER(qdrmfgp_state::qdrmfgp2_interrupt)
 		device.execute().set_input_line(M68K_IRQ_4, ASSERT_LINE);
 }
 
-WRITE_LINE_MEMBER(qdrmfgp_state::gp2_ide_interrupt)
+void qdrmfgp_state::gp2_ide_interrupt(int state)
 {
 	if (m_control & 0x0010)
 		if (state != CLEAR_LINE)
@@ -519,7 +519,7 @@ static INPUT_PORTS_START( qdrmfgp )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Very_Hard ) )
 
 	PORT_START("SENSOR")
-	PORT_BIT( 0x0003, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(qdrmfgp_state, battery_sensor_r)   /* battery power sensor */
+	PORT_BIT( 0x0003, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(qdrmfgp_state::battery_sensor_r))   /* battery power sensor */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE3 )
 	PORT_BIT( 0xfff0, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -599,7 +599,7 @@ static INPUT_PORTS_START( qdrmfgp2 )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Very_Hard ) )
 
 	PORT_START("SENSOR")
-	PORT_BIT( 0x0003, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(qdrmfgp_state, battery_sensor_r)   /* battery power sensor */
+	PORT_BIT( 0x0003, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(qdrmfgp_state::battery_sensor_r))   /* battery power sensor */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE3 )
 	PORT_BIT( 0xfff0, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -614,7 +614,7 @@ INPUT_PORTS_END
 
 int m_sound_intck;
 
-WRITE_LINE_MEMBER(qdrmfgp_state::k054539_irq1_gen)
+void qdrmfgp_state::k054539_irq1_gen(int state)
 {
 	if (m_control & 1)
 	{
@@ -771,7 +771,7 @@ ROM_START( qdrmfgp )
 	ROM_LOAD( "gq_460_a07.14h", 0x000000, 0x80000, CRC(67d8ea6b) SHA1(11af1b5a33de2a6e24823964d210bef193ecefe4) )
 	ROM_LOAD( "gq_460_a06.12h", 0x080000, 0x80000, CRC(97ed5a77) SHA1(68600fd8d914451284cf181fb4bd5872860fb9ad) )
 
-	DISK_REGION( "ata:0:hdd:image" )            /* IDE HARD DRIVE */
+	DISK_REGION( "ata:0:hdd" )            /* IDE HARD DRIVE */
 	DISK_IMAGE( "gq460a08", 0, SHA1(2f142f986fa3c79d5c4102e800980d1706c35f75) )
 ROM_END
 
@@ -788,7 +788,7 @@ ROM_START( qdrmfgp2 )
 	ROM_LOAD( "ge_557_a07.19h", 0x000000, 0x80000, CRC(7491e0c8) SHA1(6459ab5e7af052ef7a1c4ce01cd844c0f4319f2e) )
 	ROM_LOAD( "ge_557_a08.19k", 0x080000, 0x80000, CRC(3da2b20c) SHA1(fdc2cdc27f3299f541944a78ce36ed33a7926056) )
 
-	DISK_REGION( "ata:0:hdd:image" )            /* IDE HARD DRIVE */
+	DISK_REGION( "ata:0:hdd" )            /* IDE HARD DRIVE */
 	DISK_IMAGE( "ge557a09", 0, SHA1(1ef8093b542fe0bf8240a5fd64e5af3839b6a04c) )
 ROM_END
 
