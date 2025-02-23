@@ -8,8 +8,8 @@
 
 *********************************************************************/
 
-#ifndef MAME_DEVICES_IMAGEDEV_HARDDRIV_H
-#define MAME_DEVICES_IMAGEDEV_HARDDRIV_H
+#ifndef MAME_IMAGEDEV_HARDDRIV_H
+#define MAME_IMAGEDEV_HARDDRIV_H
 
 #include "softlist_dev.h"
 
@@ -74,20 +74,28 @@ public:
 	virtual const char *file_extensions() const noexcept override { return "chd,hd,hdv,2mg,hdi"; }
 	virtual const util::option_guide &create_option_guide() const override;
 
-	// specific implementation
-	hard_disk_file *get_hard_disk_file() { return m_hard_disk_handle.get(); }
+	const hard_disk_file::info &get_info() const;
+	bool read(uint32_t lbasector, void *buffer);
+	bool write(uint32_t lbasector, const void *buffer);
+
+	bool set_block_size(uint32_t blocksize);
+
+	std::error_condition get_inquiry_data(std::vector<uint8_t> &data) const;
+	std::error_condition get_cis_data(std::vector<uint8_t> &data) const;
+	std::error_condition get_disk_key_data(std::vector<uint8_t> &data) const;
 
 protected:
 	harddisk_image_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
 	// device_t implementation
 	virtual void device_config_complete() override;
-	virtual void device_start() override;
-	virtual void device_stop() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_stop() override ATTR_COLD;
 
 	// device_image_interface implementation
 	virtual const software_list_loader &get_software_list_loader() const override { return rom_software_list_loader::instance(); }
 
+	void setup_current_preset_image();
 	std::error_condition internal_load_hd();
 
 	chd_file        *m_chd;
@@ -103,4 +111,4 @@ protected:
 // device type definition
 DECLARE_DEVICE_TYPE(HARDDISK, harddisk_image_device)
 
-#endif // MAME_DEVICES_IMAGEDEV_HARDDRIV_H
+#endif // MAME_IMAGEDEV_HARDDRIV_H

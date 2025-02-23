@@ -26,8 +26,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	int get_id_from_device( device_t *device );
 
@@ -59,9 +59,8 @@ private:
 	/* disk drive unit descriptor */
 	struct hd_unit_t
 	{
-		device_image_interface *img;                        /* image descriptor */
+		harddisk_image_device *img;                        /* image descriptor */
 		format_t format;
-		hard_disk_file *hd_handle;      /* mame hard disk descriptor - only if format == format_mame */
 		unsigned int wp : 1;                    /* true if disk is write-protected */
 		unsigned int unsafe : 1;                /* true when a disk has just been connected */
 

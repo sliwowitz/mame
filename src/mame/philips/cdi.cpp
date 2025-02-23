@@ -51,7 +51,7 @@ TODO:
 #include "cdi.h"
 
 #include "cpu/m6805/m6805.h"
-#include "imagedev/chd_cd.h"
+#include "imagedev/cdromimg.h"
 #include "machine/timekpr.h"
 #include "sound/cdda.h"
 
@@ -67,11 +67,11 @@ TODO:
 // TODO: NTSC system clock is 30.2098 MHz; additional 4.9152 MHz XTAL provided for UART
 #define CLOCK_A 30_MHz_XTAL
 
-#define LOG_DVC             (1 << 1)
-#define LOG_QUIZARD_READS   (1 << 2)
-#define LOG_QUIZARD_WRITES  (1 << 3)
-#define LOG_QUIZARD_OTHER   (1 << 4)
-#define LOG_UART            (1 << 5)
+#define LOG_DVC             (1U << 1)
+#define LOG_QUIZARD_READS   (1U << 2)
+#define LOG_QUIZARD_WRITES  (1U << 3)
+#define LOG_QUIZARD_OTHER   (1U << 4)
+#define LOG_UART            (1U << 5)
 
 #define VERBOSE         (0)
 #include "logmacro.h"
@@ -195,21 +195,21 @@ void cdi_state::machine_reset()
 
 void quizard_state::machine_start()
 {
-	save_item(NAME(m_mcu_rx_from_cpu));
-	save_item(NAME(m_mcu_initial_byte));
 	save_item(NAME(m_boot_press));
 
 	m_boot_timer = timer_alloc(FUNC(quizard_state::boot_press_tick), this);
+
+	set_data_frame(1, 8, PARITY_NONE, STOP_BITS_1);
+	set_rate(9600);
 }
 
 void quizard_state::machine_reset()
 {
 	cdi_state::machine_reset();
 
-	m_mcu_rx_from_cpu = 0x00;
-	m_mcu_initial_byte = true;
 	m_boot_press = false;
 	m_boot_timer->adjust(attotime::from_seconds(13), 1);
+	m_mcu_p3 = 0x05; // RTS|RXD
 }
 
 
@@ -288,16 +288,8 @@ void quizard_state::mcu_rtsn_from_cpu(int state)
 void quizard_state::mcu_rx_from_cpu(uint8_t data)
 {
 	LOGMASKED(LOG_UART, "MCU receiving %02x from CPU\n", data);
-	if (m_mcu_initial_byte)
-	{
-		m_mcu_initial_byte = false;
-		return;
-	}
 
-	m_mcu_rx_from_cpu = data;
-
-	m_mcu->set_input_line(MCS51_RX_LINE, ASSERT_LINE);
-	m_mcu->set_input_line(MCS51_RX_LINE, CLEAR_LINE);
+	transmit_register_setup(data);
 }
 
 uint8_t quizard_state::mcu_p0_r()
@@ -325,8 +317,8 @@ uint8_t quizard_state::mcu_p2_r()
 
 uint8_t quizard_state::mcu_p3_r()
 {
-	LOGMASKED(LOG_QUIZARD_READS, "%s: MCU Port 3 Read (%02x)\n", machine().describe_context(), 0x04);
-	return 0x04;
+	LOGMASKED(LOG_QUIZARD_READS, "%s: MCU Port 3 Read (%02x)\n", machine().describe_context(), m_mcu_p3);
+	return m_mcu_p3;
 }
 
 void quizard_state::mcu_p0_w(uint8_t data)
@@ -347,20 +339,8 @@ void quizard_state::mcu_p2_w(uint8_t data)
 void quizard_state::mcu_p3_w(uint8_t data)
 {
 	LOGMASKED(LOG_QUIZARD_WRITES, "%s: MCU Port 3 Write (%02x)\n", machine().describe_context(), data);
+	rx_w(BIT(data, 1));
 	m_maincpu->uart_ctsn(BIT(data, 6));
-}
-
-void quizard_state::mcu_tx(uint8_t data)
-{
-	LOGMASKED(LOG_QUIZARD_OTHER, "%s: MCU transmitting %02x\n", machine().describe_context(), data);
-	m_maincpu->uart_rx(data);
-}
-
-uint8_t quizard_state::mcu_rx()
-{
-	uint8_t data = m_mcu_rx_from_cpu;
-	LOGMASKED(LOG_QUIZARD_OTHER, "%s: MCU receiving %02x\n", machine().describe_context(), data);
-	return data;
 }
 
 /*************************
@@ -478,6 +458,9 @@ void cdi_state::cdimono1_base(machine_config &config)
 	CDI_SLAVE_HLE(config, m_slave_hle, 0);
 	m_slave_hle->int_callback().set(m_maincpu, FUNC(scc68070_device::in2_w));
 
+	CDROM(config, m_cdrom);
+	m_cdrom->set_interface("cdrom");
+
 	/* sound hardware */
 	SPEAKER(config, "lspeaker").front_left();
 	SPEAKER(config, "rspeaker").front_right();
@@ -520,8 +503,9 @@ void cdi_state::cdimono2(machine_config &config)
 	M68HC05C8(config, m_servo, 4_MHz_XTAL);
 	M68HC05C8(config, m_slave, 4_MHz_XTAL);
 
-	CDROM(config, "cdrom").set_interface("cdi_cdrom");
+	CDROM(config, m_cdrom).set_interface("cdrom");
 	SOFTWARE_LIST(config, "cd_list").set_original("cdi").set_filter("!DVC");
+	SOFTWARE_LIST(config, "photocd_list").set_compatible("photo_cd");
 
 	/* sound hardware */
 	SPEAKER(config, "lspeaker").front_left();
@@ -564,8 +548,9 @@ void cdi_state::cdi910(machine_config &config)
 	M68HC05C8(config, m_servo, 4_MHz_XTAL);
 	M68HC05C8(config, m_slave, 4_MHz_XTAL);
 
-	CDROM(config, "cdrom").set_interface("cdi_cdrom");
+	CDROM(config, "cdrom").set_interface("cdrom");
 	SOFTWARE_LIST(config, "cd_list").set_original("cdi").set_filter("!DVC");
+	SOFTWARE_LIST(config, "photocd_list").set_compatible("photo_cd");
 
 	/* sound hardware */
 	SPEAKER(config, "lspeaker").front_left();
@@ -589,18 +574,20 @@ void cdi_state::cdimono1(machine_config &config)
 	m_slave_hle->read_mousey().set_ioport("MOUSEY");
 	m_slave_hle->read_mousebtn().set_ioport("MOUSEBTN");
 
-	CDROM(config, "cdrom").set_interface("cdi_cdrom");
 	SOFTWARE_LIST(config, "cd_list").set_original("cdi").set_filter("!DVC");
+	SOFTWARE_LIST(config, "photocd_list").set_compatible("photo_cd");
 }
 
 void quizard_state::quizard(machine_config &config)
 {
 	cdimono1_base(config);
+	m_cdrom->add_region("cdrom");
+
 	m_maincpu->set_addrmap(AS_PROGRAM, &quizard_state::cdimono1_mem);
 	m_maincpu->uart_rtsn_callback().set(FUNC(quizard_state::mcu_rtsn_from_cpu));
 	m_maincpu->uart_tx_callback().set(FUNC(quizard_state::mcu_rx_from_cpu));
 
-	I8751(config, m_mcu, 8000000);
+	I8751(config, m_mcu, 11.0592_MHz_XTAL);
 	m_mcu->port_in_cb<0>().set(FUNC(quizard_state::mcu_p0_r));
 	m_mcu->port_in_cb<1>().set(FUNC(quizard_state::mcu_p1_r));
 	m_mcu->port_in_cb<2>().set(FUNC(quizard_state::mcu_p2_r));
@@ -609,10 +596,25 @@ void quizard_state::quizard(machine_config &config)
 	m_mcu->port_out_cb<1>().set(FUNC(quizard_state::mcu_p1_w));
 	m_mcu->port_out_cb<2>().set(FUNC(quizard_state::mcu_p2_w));
 	m_mcu->port_out_cb<3>().set(FUNC(quizard_state::mcu_p3_w));
-	m_mcu->serial_tx_cb().set(FUNC(quizard_state::mcu_tx));
-	m_mcu->serial_rx_cb().set(FUNC(quizard_state::mcu_rx));
 
 	m_slave_hle->read_mousebtn().set(FUNC(quizard_state::mcu_button_press));
+}
+
+void quizard_state::tra_callback()
+{
+	if (transmit_register_get_data_bit())
+		m_mcu_p3 |= 1;
+	else
+		m_mcu_p3 &= ~1;
+}
+
+void quizard_state::rcv_complete()
+{
+	receive_register_extract();
+
+	const uint8_t data = get_received_char();
+	LOGMASKED(LOG_QUIZARD_OTHER, "%s: MCU transmitting %02x\n", machine().describe_context(), data);
+	m_maincpu->uart_rx(data);
 }
 
 /*************************
@@ -670,9 +672,16 @@ ROM_START( cdi490a )
 	ROM_SYSTEM_BIOS( 0, "cdi490", "CD-i 490" )
 	ROMX_LOAD( "cdi490a.rom", 0x000000, 0x80000, CRC(e2f200f6) SHA1(c9bf3c4c7e4fe5cbec3fe3fc993c77a4522ca547), ROM_BIOS(0) | ROM_GROUPWORD | ROM_REVERSE  )
 
-	ROM_REGION(0x40000, "mpegs", 0) // keep these somewhere
-	ROM_LOAD( "impega.rom", 0x0000, 0x40000, CRC(84d6f6aa) SHA1(02526482a0851ea2a7b582d8afaa8ef14a8bd914) )
-	ROM_LOAD( "vmpega.rom", 0x0000, 0x40000, CRC(db264e8b) SHA1(be407fbc102f1731a0862554855e963e5a47c17b) )
+	ROM_REGION(0x60000, "mpegs", 0) // keep these somewhere
+	ROM_LOAD( "impega.rom", 0x00000, 0x40000, CRC(84d6f6aa) SHA1(02526482a0851ea2a7b582d8afaa8ef14a8bd914) ) // 1ST AND 2ND HALF IDENTICAL
+	// Philips CD-i - DVC card 22ER9141
+	ROM_LOAD16_BYTE( "fmv ffd9 p7308 r4.1 vmpeg.bin", 0x40000, 0x10000, CRC(30ba9273) SHA1(d8adca0627b356ced6131b9458ac1175e43e6548) )
+	ROM_LOAD16_BYTE( "fmv 4ba9 p7307 r4.1 vmpeg.bin", 0x40001, 0x10000, CRC(623edb1f) SHA1(4c6b11e28ad4c2f5c2e439f7910a783e0a79d1a9) )
+ROM_END
+
+ROM_START( gpi1200 )
+	ROM_REGION(0x80000, "maincpu", 0)
+	ROM_LOAD16_WORD_SWAP( "gpi-1200k-1313.bin", 0x000000, 0x80000, CRC(dbd41615) SHA1(83929617a5c01551ee961aeb685295fcc0810f54) )
 ROM_END
 
 ROM_START( cdibios ) // for the quizard sets
@@ -776,12 +785,6 @@ ROM_END
 ROM_START( quizardi_12 )
 	QUIZARD_BIOS_ROM
 	QUIZARD1_CHD_12
-	QUIZARD1_MCU_IT
-ROM_END
-
-ROM_START( quizardi_10 )
-	QUIZARD_BIOS_ROM
-	QUIZARD1_CHD_10
 	QUIZARD1_MCU_IT
 ROM_END
 
@@ -889,6 +892,17 @@ ROM_START( quizard4_40 ) /* CD-ROM printed 07/97 */
 	ROM_LOAD( "de_142_d3.bin", 0x0000, 0x1000, CRC(77be0b40) SHA1(113b5c239480a2259f55e411ba8fb3972e6d4301) ) // German language
 ROM_END
 
+// only the CD was dumped, MCU not available
+ROM_START( quizardff ) /* CD-ROM printed 01/96 */
+	QUIZARD_BIOS_ROM
+
+	DISK_REGION( "cdrom" )
+	DISK_IMAGE_READONLY( "quizardff", 0, SHA1(ac533040379c1350066e778e3a86d1beb11c6f71) )
+
+	ROM_REGION(0x1000, "mcu", 0) // Intel D8751H MCU
+	ROM_LOAD( "8751.bin", 0x0000, 0x1000, NO_DUMP )
+ROM_END
+
 
 /*************************
 *      Game driver(s)    *
@@ -900,6 +914,7 @@ CONS( 1991, cdimono1, 0,      0,      cdimono1, cdi,      cdi_state, empty_init,
 CONS( 1991, cdimono2, 0,      0,      cdimono2, cdimono2, cdi_state, empty_init, "Philips",    "CD-i (Mono-II) (NTSC)",   MACHINE_NOT_WORKING )
 CONS( 1991, cdi910,   0,      0,      cdi910,   cdimono2, cdi_state, empty_init, "Philips",    "CD-i 910-17P Mini-MMC (PAL)",   MACHINE_NOT_WORKING )
 CONS( 1991, cdi490a,  0,      0,      cdimono1, cdi,      cdi_state, empty_init, "Philips",    "CD-i 490",   MACHINE_NOT_WORKING )
+CONS( 1995, gpi1200,  0,      0,      cdimono1, cdi,      cdi_state, empty_init, "Goldstar",   "GPi 1200",   MACHINE_NOT_WORKING )
 
 // The Quizard games are retail CD-i units in a cabinet, with an additional JAMMA adapter and dongle for protection, hence being clones of the system.
 /*    YEAR  NAME         PARENT    MACHINE        INPUT     DEVICE          INIT         MONITOR     COMPANY         FULLNAME */
@@ -912,7 +927,6 @@ GAME( 1995, quizard_10,  quizard,  quizard,       quizard,  quizard_state, empty
 GAME( 1995, quizardi,    quizard,  quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard (v1.8, Italian, i8751 IT 11 I2)", MACHINE_IMPERFECT_SOUND )
 GAME( 1995, quizardi_17, quizard,  quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard (v1.7, Italian, i8751 IT 11 I2)", MACHINE_IMPERFECT_SOUND )
 GAME( 1995, quizardi_12, quizard,  quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard (v1.2, Italian, i8751 IT 11 I2)", MACHINE_IMPERFECT_SOUND )
-GAME( 1995, quizardi_10, quizard,  quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard (v1.0, Italian, i8751 IT 11 I2)", MACHINE_IMPERFECT_SOUND )
 
 GAME( 1995, quizard2,    cdibios,  quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard 2 (v2.3, German, i8751 DN 122 D3)", MACHINE_IMPERFECT_SOUND )
 GAME( 1995, quizard2_22, quizard2, quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard 2 (v2.2, German, i8751 DN 122 D3)", MACHINE_IMPERFECT_SOUND )
@@ -926,3 +940,5 @@ GAME( 1998, quizard4,    cdibios,  quizard,       quizard,  quizard_state, empty
 GAME( 1998, quizard4cz,  quizard4, quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard 4 Rainbow (v4.2, Czech, i8751 TS142 CZ1)", MACHINE_IMPERFECT_SOUND )
 GAME( 1998, quizard4_41, quizard4, quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard 4 Rainbow (v4.1, German, i8751 DE 142 D3)", MACHINE_IMPERFECT_SOUND )
 GAME( 1997, quizard4_40, quizard4, quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard 4 Rainbow (v4.0, German, i8751 DE 142 D3)", MACHINE_IMPERFECT_SOUND )
+
+GAME( 1996, quizardff,   cdibios,  quizard,       quizard,  quizard_state, empty_init,  ROT0, "TAB Austria",  "Quizard Fun and Fascination (French Edition V1 - 01/96)", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_SOUND )

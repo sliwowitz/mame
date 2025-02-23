@@ -8,9 +8,10 @@
         * Battlezone
         * Bradley Trainer
         * Red Baron
+        * Desert Wars (Spanish bootleg of Battle Zone)
 
     Known bugs:
-        * none at this time
+        * None at this time on the Atari sets (Desert Wars isn't working)
 
 ****************************************************************************
 
@@ -269,7 +270,7 @@ INTERRUPT_GEN_MEMBER(bzone_state::bzone_interrupt)
  *
  *************************************/
 
-READ_LINE_MEMBER(bzone_state::clock_r)
+int bzone_state::clock_r()
 {
 	return (m_maincpu->total_cycles() & 0x100) ? 1 : 0;
 }
@@ -428,9 +429,9 @@ void redbaron_state::redbaron_map(address_map &map)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Diagnostic Step") \
 	/* bit 6 is the VG HALT bit. We set it to "low" */\
 	/* per default (busy vector processor). */\
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("avg", avg_device, done_r)\
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("avg", FUNC(avg_device::done_r))\
 	/* bit 7 is tied to a 3kHz clock */\
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(bzone_state, clock_r)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(bzone_state::clock_r))
 
 
 #define BZONEDSW0\
@@ -851,6 +852,8 @@ ROM_END
   |  |_74LS00PC|                 |____________|               |
   |                                                           |
   |___________________________________________________________|
+
+   Also, it uses a blue overlay instead of the usual green.
 */
 ROM_START( dsrtwars ) // Desert Wars
 	ROM_REGION( 0x8800, "maincpu", 0 )

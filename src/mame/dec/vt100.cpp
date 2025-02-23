@@ -71,7 +71,8 @@ public:
 		m_rstbuf(*this, "rstbuf"),
 		m_rs232(*this, "rs232"),
 		m_printer_uart(*this, "printuart"),
-		m_p_ram(*this, "p_ram")
+		m_p_ram(*this, "p_ram"),
+		m_phosphor(*this, "phosphor")
 	{
 	}
 
@@ -93,6 +94,8 @@ private:
 	optional_device<ins8250_device> m_printer_uart;
 	required_shared_ptr<u8> m_p_ram;
 
+	required_ioport m_phosphor;
+
 	u8 flags_r();
 	u8 modem_r();
 	void nvr_latch_w(u8 data);
@@ -101,17 +104,17 @@ private:
 	u8 video_ram_r(offs_t offset);
 	void uart_clock_w(u8 data);
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	u32 screen_update_vt100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	IRQ_CALLBACK_MEMBER(vt102_irq_callback);
-	void vt100_mem(address_map &map);
-	void vt100_io(address_map &map);
-	void vt102_io(address_map &map);
-	void stp_mem(address_map &map);
-	void stp_io(address_map &map);
-	void vt180_mem(address_map &map);
-	void vt180_io(address_map &map);
+	void vt100_mem(address_map &map) ATTR_COLD;
+	void vt100_io(address_map &map) ATTR_COLD;
+	void vt102_io(address_map &map) ATTR_COLD;
+	void stp_mem(address_map &map) ATTR_COLD;
+	void stp_io(address_map &map) ATTR_COLD;
+	void vt180_mem(address_map &map) ATTR_COLD;
+	void vt180_io(address_map &map) ATTR_COLD;
 };
 
 
@@ -232,10 +235,27 @@ void vt100_state::vt102_io(address_map &map)
 
 /* Input ports */
 static INPUT_PORTS_START( vt100 )
+	PORT_START("phosphor")
+	PORT_CONFNAME(0x03, 0x00, "Phosphor Color")
+	PORT_CONFSETTING(0x00, "Green")
+	PORT_CONFSETTING(0x01, "Amber")
+	PORT_CONFSETTING(0x02, "White")
 INPUT_PORTS_END
 
 u32 vt100_state::screen_update_vt100(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	switch (m_phosphor->read())
+	{
+		case 0x00:
+			screen.set_color(rgb_t::green());
+			break;
+		case 0x01:
+			screen.set_color(rgb_t::amber());
+			break;
+		case 0x02:
+			screen.set_color(rgb_t::white());
+			break;
+	}
 	m_crtc->video_update(bitmap, cliprect);
 	return 0;
 }

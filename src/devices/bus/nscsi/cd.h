@@ -5,10 +5,12 @@
 
 #pragma once
 
+#include "imagedev/cdromimg.h"
 #include "machine/nscsi_bus.h"
-#include "imagedev/chd_cd.h"
-#include "cdrom.h"
 #include "sound/cdda.h"
+
+#include "cdrom.h"
+
 
 class nscsi_cdrom_device : public nscsi_full_device
 {
@@ -18,6 +20,9 @@ public:
 	void set_block_size(u32 block_size);
 
 protected:
+	required_device<cdrom_image_device> image;
+	required_device<cdda_device> cdda;
+
 	nscsi_cdrom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock = 0);
 
 	nscsi_cdrom_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, const char *mfr, const char *product, const char *rev, uint8_t inq_data, uint8_t compliance)
@@ -30,28 +35,29 @@ protected:
 		this->compliance = compliance;
 	}
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	virtual void scsi_command() override;
 	virtual uint8_t scsi_get_data(int id, int pos) override;
 	virtual void scsi_put_data(int buf, int offset, uint8_t data) override;
+	virtual bool scsi_command_done(uint8_t command, uint8_t length) override;
 
-	void return_no_cd();
+	virtual void return_no_cd();
 	static int to_msf(int frame);
 
-	cdrom_file *cdrom;
+	void update_directory();
 
-	required_device<cdda_device> cdda;
+	bool m_removal_prevented;
 
 private:
 	static constexpr uint32_t bytes_per_sector = 2048;
 
+	u32 sequence_counter;
 	uint8_t sector_buffer[bytes_per_sector];
 	uint32_t bytes_per_block;
 	int lba, cur_sector;
-	required_device<cdrom_image_device> image;
 	uint8_t mode_data[256];
 	uint8_t mode_data_size;
 
@@ -62,6 +68,14 @@ private:
 	uint8_t compliance;
 
 	uint8_t cdda_sotc;
+
+	uint32_t m_xfer_position;
+	uint16_t m_write_length;
+	uint32_t m_write_offset;
+	bool m_write_is_setup;
+	std::string m_write_path;
+	std::vector<osd::directory::entry> m_directory;
+	std::vector<uint8_t> m_xfer_buffer;
 };
 
 class nscsi_cdrom_sgi_device : public nscsi_cdrom_device
@@ -126,10 +140,17 @@ class nscsi_cdrom_apple_device : public nscsi_cdrom_device
 {
 public:
 	nscsi_cdrom_apple_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock = 0);
+	virtual void device_start() override ATTR_COLD;
 
 protected:
 	virtual void scsi_command() override;
 	virtual bool scsi_command_done(uint8_t command, uint8_t length) override;
+	virtual void scsi_put_data(int buf, int offset, uint8_t data) override;
+	virtual void return_no_cd() override;
+
+private:
+	bool m_stopped;
+	uint32_t m_stop_position;
 };
 
 DECLARE_DEVICE_TYPE(NSCSI_CDROM, nscsi_cdrom_device)

@@ -11,11 +11,6 @@ The PCB is labeled YMX-YWP.
 The software can be started from Basic by entering the command "CALL JWP"
 or "_JWP".
 
-TODO:
-- This module runs unstable on the cx5m128 driver.
-  The instability is mostly visible when pressing F1, causing the system
-  to reset, hang, or display a screen with random data.
-
 **************************************************************************/
 
 #include "emu.h"
@@ -31,12 +26,12 @@ class msx_cart_skw01_device : public device_t, public msx_cart_interface
 public:
 	msx_cart_skw01_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock);
 
-	virtual const tiny_rom_entry *device_rom_region() const override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
 protected:
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	static constexpr u16 SRAM_SIZE = 2048;
